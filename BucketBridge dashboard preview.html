@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BucketBridge: OCI to Azure DR sync</title>
+<style>
+:root{--bg:#f3f5f8;--panel:#fff;--ink:#17202e;--mute:#5d6a7e;--line:#dde2ea;--oci:#c2412d;--az:#1565c0;--ok:#127a55;--okbg:#e4f5ed;--warn:#9a5b00;--warnbg:#fff1d6;--bad:#b3261e;--badbg:#fde8e6;--sel:#e6edf9;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141c;--panel:#171e29;--ink:#e8edf5;--mute:#98a4b8;--line:#2a3443;--oci:#ee7b68;--az:#6aa8f0;--ok:#4cc79a;--okbg:#12352a;--warn:#f0b349;--warnbg:#3a2c10;--bad:#f2837c;--badbg:#3d1c1a;--sel:#1f2b40;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f141c;--panel:#171e29;--ink:#e8edf5;--mute:#98a4b8;--line:#2a3443;--oci:#ee7b68;--az:#6aa8f0;--ok:#4cc79a;--okbg:#12352a;--warn:#f0b349;--warnbg:#3a2c10;--bad:#f2837c;--badbg:#3d1c1a;--sel:#1f2b40;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-variant-numeric:tabular-nums}
+.app{display:grid;grid-template-columns:210px minmax(0,1fr)}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;align-self:start;height:100vh}
+.brand{font-size:17px;font-weight:700;padding:0 8px 16px}
+.brand small{display:block;font-size:12px;font-weight:400;color:var(--mute)}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);padding:9px 10px;border-radius:6px;font:inherit;cursor:pointer}
+nav button:hover{background:var(--bg)}
+nav button.on{background:var(--sel);font-weight:600}
+nav button:focus-visible,.btn:focus-visible,.sw:focus-visible{outline:2px solid var(--az);outline-offset:2px}
+main{padding:18px 22px 40px;min-width:0}
+.top{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{font-size:20px;margin:0}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:3px 11px;font-size:12.5px}
+.pill i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+.note{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:13px}
+.maint{display:flex;align-items:center;gap:8px;font-size:13px}
+.sw{width:38px;height:22px;border-radius:99px;border:0;background:var(--line);position:relative;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.sw[aria-checked="true"]{background:var(--warn)}
+.sw[aria-checked="true"]::after{left:19px}
+.view{display:none}.view.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;align-items:stretch}
+.node{padding:12px 14px;border:1px solid var(--line);position:relative;background:var(--panel)}
+.node:first-child{border-radius:8px 0 0 8px;border-top:4px solid var(--oci)}
+.node:last-child{border-radius:0 8px 8px 0;border-top:4px solid var(--az)}
+.node:nth-child(2),.node:nth-child(3){border-top:4px solid var(--mute)}
+.node+.node{border-left:0}
+.node b{display:block;font-size:22px;line-height:1.2}
+.node span{color:var(--mute);font-size:12.5px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.kpis .card{margin:0}
+.kpis b{display:block;font-size:22px}
+.kpis span{color:var(--mute);font-size:12.5px}
+.bars{display:flex;align-items:flex-end;gap:4px;height:96px}
+.bars div{flex:1;background:var(--az);border-radius:3px 3px 0 0;min-height:3px;opacity:.85}
+.axis{display:flex;justify-content:space-between;color:var(--mute);font-size:12px;margin-top:4px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:620px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--mute);font-size:12.5px}
+td.k{white-space:normal;word-break:break-all;min-width:230px}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px}
+.t-ok{background:var(--okbg);color:var(--ok)}.t-warn{background:var(--warnbg);color:var(--warn)}.t-bad{background:var(--badbg);color:var(--bad)}.t-n{background:var(--bg);color:var(--mute)}
+.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer}
+.btn:hover{background:var(--bg)}
+.btn.p{background:var(--az);border-color:var(--az);color:#fff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.prog{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;min-width:140px}
+.prog i{display:block;height:100%;background:var(--az)}
+.prog.done i{background:var(--ok)}
+.pr{display:grid;grid-template-columns:150px 1fr 90px;gap:12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.two .card{margin:0}
+ol.steps{margin:0;padding-left:20px}ol.steps li{margin:6px 0}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:0}dt{color:var(--mute)}dd{margin:0}
+.muted{color:var(--mute)}
+@media (max-width:760px){.app{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}nav{display:flex;overflow-x:auto;gap:4px}nav button{width:auto;white-space:nowrap}.flow{grid-template-columns:1fr 1fr}.node:nth-child(n){border-radius:0;border-left:1px solid var(--line)}.pr{grid-template-columns:1fr}main{padding:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand">BucketBridge<small>OCI to Azure DR sync</small></div>
+  <nav id="nav">
+    <button class="on" data-v="overview">Overview</button>
+    <button data-v="events">Live events</button>
+    <button data-v="bulk">Bulk copy</button>
+    <button data-v="recon">Reconcile</button>
+    <button data-v="recover">Recovery</button>
+    <button data-v="failed">Failed jobs <span class="tag t-bad" id="fc">3</span></button>
+    <button data-v="settings">Settings</button>
+  </nav>
+</aside>
+<main>
+  <div class="note">Design preview with sample data. Nothing here is connected to OCI or Azure.</div>
+  <div class="top">
+    <h1 id="title">Overview</h1>
+    <div class="pills">
+      <span class="pill"><i></i>OCI stream connected</span>
+      <span class="pill"><i></i>Azure connected</span>
+      <span class="pill"><i></i>Worker running</span>
+    </div>
+    <label class="maint">Maintenance mode (pauses delete mirroring)
+      <button class="sw" id="sw" role="switch" aria-checked="false" aria-label="Maintenance mode"></button>
+    </label>
+  </div>
+
+  <section class="view on" id="overview">
+    <div class="card">
+      <h2>Live pipeline</h2>
+      <div class="flow">
+        <div class="node"><span>OCI bucket</span><b>58,214</b><span>objects changed today</span></div>
+        <div class="node"><span>Event stream</span><b>12</b><span>waiting to be read</span></div>
+        <div class="node"><span>Workers (8)</span><b>3 busy</b><span>average copy 1.9 s</span></div>
+        <div class="node"><span>Azure container</span><b>57,914</b><span>copied today</span></div>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="card"><b>38 s</b><span>Current sync lag</span></div>
+      <div class="card"><b>2 min</b><span>Oldest item waiting</span></div>
+      <div class="card"><b id="fk">3</b><span>Failed, need attention</span></div>
+      <div class="card"><b>12 of 200</b><span>Deletes in last 10 min (limit 200)</span></div>
+      <div class="card"><b>1.9 TB</b><span>OCI outbound this month (10 TB free)</span></div>
+    </div>
+    <div class="card">
+      <h2>Objects copied per hour, last 24 hours</h2>
+      <div class="bars" id="bars" aria-hidden="true"></div>
+      <div class="axis"><span>24 h ago</span><span>12 h ago</span><span>now</span></div>
+    </div>
+    <div class="card">
+      <h2>Canary check</h2>
+      <p style="margin:0">A test file is uploaded to OCI every 5 minutes. Last one reached Azure in <b>41 s</b> at 14:00. You are alerted if one takes longer than 3 minutes.</p>
+    </div>
+  </section>
+
+  <section class="view" id="events">
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <input aria-label="Search objects" placeholder="Search object name" style="flex:1;min-width:200px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit">
+        <button class="btn">All types</button><button class="btn">All results</button>
+      </div>
+      <div class="tw"><table>
+        <tr><th>Time</th><th>Event</th><th>Object</th><th>Size</th><th>Result</th><th>Took</th></tr>
+        <tr><td>14:02:11</td><td>Create</td><td class="k">claims/2026/10/CL-88412.pdf</td><td>412 KB</td><td><span class="tag t-ok">Copied</span></td><td>1.8 s</td></tr>
+        <tr><td>14:02:09</td><td>Update</td><td class="k">policies/2026/PL-20931/schedule.pdf</td><td>96 KB</td><td><span class="tag t-ok">Copied</span></td><td>1.1 s</td></tr>
+        <tr><td>14:02:07</td><td>Delete</td><td class="k">temp/upload-7731.tmp</td><td>0 KB</td><td><span class="tag t-ok">Deleted in Azure</span></td><td>0.4 s</td></tr>
+        <tr><td>14:02:03</td><td>Create</td><td class="k">claims/2026/10/CL-88413.jpg</td><td>2.4 MB</td><td><span class="tag t-n">Queued</span></td><td>-</td></tr>
+        <tr><td>14:01:58</td><td>Create</td><td class="k">kyc/2026/KY-5520/emirates-id.pdf</td><td>1.1 MB</td><td><span class="tag t-warn">Copying</span></td><td>-</td></tr>
+        <tr><td>14:01:40</td><td>Create</td><td class="k">claims/2026/10/CL-88409.pdf</td><td>530 KB</td><td><span class="tag t-bad">Failed, retry 2 of 5</span></td><td>-</td></tr>
+        <tr><td>14:01:22</td><td>Delete</td><td class="k">claims/2026/09/CL-80011.pdf</td><td>-</td><td><span class="tag t-warn">Held, still exists in OCI</span></td><td>-</td></tr>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="view" id="bulk">
+    <div class="card">
+      <h2>Copy whole bucket to Azure</h2>
+      <p class="muted" style="margin-top:0">Event sync is already running, so objects uploaded during the copy are not missed. This job runs on the server and continues if you close this page.</p>
+      <div class="row" style="margin-bottom:12px"><b>3.9 TB of 6.5 TB</b><span class="muted">60%, about 11 hours left at 410 Mbps</span></div>
+      <div class="prog" style="height:12px"><i style="width:60%"></i></div>
+      <div class="row" style="margin-top:12px"><button class="btn p">Resume</button><button class="btn">Pause</button><button class="btn">Dry run</button><button class="btn">Limit bandwidth</button></div>
+    </div>
+    <div class="card">
+      <h2>Progress by folder</h2>
+      <div class="pr"><span>claims/2024</span><div class="prog done"><i style="width:100%"></i></div><span class="tag t-ok">Done</span></div>
+      <div class="pr"><span>claims/2025</span><div class="prog done"><i style="width:100%"></i></div><span class="tag t-ok">Done</span></div>
+      <div class="pr"><span>kyc</span><div class="prog"><i style="width:82%"></i></div><span class="tag t-warn">Running</span></div>
+      <div class="pr"><span>policies</span><div class="prog"><i style="width:35%"></i></div><span class="tag t-warn">Running</span></div>
+      <div class="pr"><span>vendor-invoices</span><div class="prog"><i style="width:0%"></i></div><span class="tag t-n">Waiting</span></div>
+      <div class="pr"><span>temp</span><div class="prog"><i style="width:0%"></i></div><span class="tag t-n">Waiting</span></div>
+    </div>
+  </section>
+
+  <section class="view" id="recon">
+    <div class="two">
+      <div class="card">
+        <h2>Last reconcile run</h2>
+        <dl><dt>Finished</dt><dd>Today, 03:41</dd><dt>Folders checked</dt><dd>claims/2025, kyc</dd><dt>Objects compared</dt><dd>OCI 2.31M, Azure 2.31M</dd><dt>Missing in Azure</dt><dd>14, copied</dd><dt>Different size</dt><dd>1, re-copied</dd><dt>Only in Azure</dt><dd>2, waiting for your approval</dd></dl>
+        <div class="row" style="margin-top:12px"><button class="btn p">Run now</button><button class="btn">Dry run</button></div>
+      </div>
+      <div class="card">
+        <h2>Needs approval</h2>
+        <p class="muted" style="margin-top:0">These exist in Azure but not in OCI. They are checked again in OCI before any delete.</p>
+        <div class="tw"><table style="min-width:0"><tr><td class="k">kyc/2026/KY-5001/old-scan.pdf</td><td><button class="btn">Delete</button></td></tr><tr><td class="k">temp/export-441.csv</td><td><button class="btn">Delete</button></td></tr></table></div>
+        <div class="row" style="margin-top:10px"><button class="btn">Keep both</button></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px"><h2>Schedule</h2><p style="margin:0">Every night at 03:00, a few folders at a time, so the whole bucket is covered about once a week without a huge scan.</p></div>
+  </section>
+
+  <section class="view" id="recover">
+    <div class="card">
+      <h2>Recovery: Azure back to OCI</h2>
+      <p class="muted" style="margin-top:0">Use after an OCI outage. It copies only new or changed files, never overwrites newer files in OCI, and never deletes.</p>
+      <ol class="steps">
+        <li>Turn on maintenance mode (top right) so deletes are not mirrored.</li>
+        <li>Run a dry run and check the file count.</li>
+        <li>Start the copy and wait for it to finish.</li>
+        <li>Switch the apps back to OCI credentials.</li>
+        <li>Run one more copy to catch uploads made during the switch.</li>
+        <li>Turn maintenance mode off.</li>
+      </ol>
+      <div class="row" style="margin-top:12px"><button class="btn p" disabled>Start copy</button><button class="btn">Dry run</button><span class="muted">Start copy unlocks after a dry run.</span></div>
+    </div>
+  </section>
+
+  <section class="view" id="failed">
+    <div class="card">
+      <div class="row" style="margin-bottom:10px"><button class="btn p" id="ra">Retry all</button></div>
+      <div class="tw"><table id="ft">
+        <tr><th>Object</th><th>Reason</th><th>Attempts</th><th></th></tr>
+        <tr><td class="k">claims/2026/10/CL-88409.pdf</td><td>Azure returned 503 (server busy)</td><td>5 of 5</td><td><button class="btn r">Retry</button></td></tr>
+        <tr><td class="k">kyc/2026/KY-5518/passport.pdf</td><td>Azure credential expired</td><td>5 of 5</td><td><button class="btn r">Retry</button></td></tr>
+        <tr><td class="k">policies/2026/PL-20877/terms.pdf</td><td>Object changed during copy</td><td>3 of 5</td><td><button class="btn r">Retry</button></td></tr>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="view" id="settings">
+    <div class="two">
+      <div class="card"><h2>Buckets</h2><dl><dt>OCI bucket</dt><dd>methaq-documents-production</dd><dt>OCI region</dt><dd>me-abudhabi-1</dd><dt>Azure container</dt><dd>documents-prod (UAE North)</dd><dt>Event source</dt><dd>OCI Streaming, 7-day retention</dd></dl><div class="row" style="margin-top:12px"><button class="btn">Test OCI</button><button class="btn">Test Azure</button></div></div>
+      <div class="card"><h2>Safety</h2><dl><dt>Mirror deletes</dt><dd>On, with check in OCI first</dd><dt>Delete limit</dt><dd>200 per 10 minutes, then pause</dd><dt>Parallel copies</dt><dd>8</dd><dt>Retries per object</dt><dd>5</dd><dt>Alerts</dt><dd>Email and Slack</dd></dl></div>
+    </div>
+  </section>
+</main>
+</div>
+<script>
+var titles={overview:"Overview",events:"Live events",bulk:"Bulk copy",recon:"Reconcile",recover:"Recovery",failed:"Failed jobs",settings:"Settings"};
+document.getElementById("nav").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;
+ document.querySelectorAll("nav button").forEach(function(x){x.classList.toggle("on",x===b)});
+ document.querySelectorAll(".view").forEach(function(v){v.classList.toggle("on",v.id===b.dataset.v)});
+ document.getElementById("title").textContent=titles[b.dataset.v];});
+var d=[1800,1500,900,700,600,800,1200,2100,3000,3600,3900,3700,3500,3400,3600,3800,3300,2900,2400,2100,1700,1500,1300,1100],h=document.getElementById("bars");
+d.forEach(function(v){var x=document.createElement("div");x.style.height=(v/3900*100)+"%";x.title=v+" objects";h.appendChild(x)});
+var sw=document.getElementById("sw");sw.onclick=function(){var on=sw.getAttribute("aria-checked")!=="true";sw.setAttribute("aria-checked",on);
+ document.querySelector(".note").textContent=on?"Maintenance mode is on. Deletes are not being mirrored to Azure.":"Design preview with sample data. Nothing here is connected to OCI or Azure."};
+var n=3;function done(b){var r=b.closest("tr");if(!r||r.dataset.d)return;r.dataset.d=1;r.style.opacity=.45;b.textContent="Queued";b.disabled=true;n--;document.getElementById("fc").textContent=n;document.getElementById("fk").textContent=n}
+document.querySelectorAll(".r").forEach(function(b){b.onclick=function(){done(b)}});
+document.getElementById("ra").onclick=function(){document.querySelectorAll(".r").forEach(done)};
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudSync Bridge — Storage Sync Console</title>
+<style>
+:root{
+  --bg:#f5f7fb;--panel:#fff;--ink:#172033;--muted:#6d7890;--line:#e6eaf1;
+  --blue:#4169e1;--blue-soft:#edf2ff;--green:#168568;--green-soft:#e7f7f1;
+  --amber:#a9670c;--amber-soft:#fff4df;--red:#c44d58;--red-soft:#fff0f1;
+  --nav:#111b31;--navmuted:#9ca9c0;--shadow:0 8px 28px rgba(24,39,75,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:grid;grid-template-columns:246px minmax(0,1fr);min-height:100vh}
+.sidebar{background:var(--nav);color:white;padding:22px 15px;display:flex;flex-direction:column;gap:28px}
+.brand{display:flex;align-items:center;gap:11px;padding:0 8px}
+.logo{width:39px;height:39px;border-radius:12px;background:linear-gradient(140deg,#76a1ff,#4264df);display:grid;place-items:center;font-weight:900;font-size:20px;box-shadow:0 5px 16px #4264df55}
+.brand strong{display:block;font-size:15px;letter-spacing:.1px}.brand small{display:block;color:var(--navmuted);font-size:11px;margin-top:3px}
+.nav-label{color:#75839c;font-size:10px;font-weight:800;letter-spacing:1.3px;padding:0 12px;margin-bottom:8px}
+.nav{display:grid;gap:5px}
+.nav button{border:0;background:transparent;color:#b5c0d3;text-align:left;padding:11px 12px;border-radius:9px;display:flex;align-items:center;gap:12px;font-size:13px}
+.nav button:hover,.nav button.active{background:#243453;color:white}
+.nav button.active{box-shadow:inset 3px 0 #7ca2ff}
+.nav .ico{width:18px;text-align:center;font-size:16px}
+.sidebar-bottom{margin-top:auto;border:1px solid #34415b;border-radius:12px;padding:13px;color:#bdc8d9;font-size:12px;line-height:1.5}
+.pulse{display:inline-block;width:7px;height:7px;background:#39d6a4;border-radius:50%;margin-right:7px}
+main{min-width:0}
+.topbar{height:72px;background:#ffffffd9;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;gap:18px;position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.crumb{font-size:12px;color:var(--muted)}.crumb b{color:var(--ink);font-weight:700}
+.top-actions{display:flex;align-items:center;gap:10px}
+.icon-btn,.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:9px 13px;font-size:12px;font-weight:700}
+.btn.primary{background:var(--blue);color:white;border-color:var(--blue)}.btn:hover{filter:brightness(.98)}
+.avatar{width:34px;height:34px;border-radius:50%;background:#e4eaff;color:#3d58b8;display:grid;place-items:center;font-size:12px;font-weight:800}
+.content{padding:29px 32px 40px;max-width:1600px;margin:auto}
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:23px}
+h1{font-size:25px;letter-spacing:-.6px;margin:0 0 7px}.subtitle{font-size:13px;color:var(--muted);line-height:1.5}
+.head-buttons{display:flex;gap:9px;flex-wrap:wrap}
+.demo-note{display:flex;gap:9px;align-items:center;background:#fff8e8;border:1px solid #f5dfae;color:#805510;border-radius:10px;padding:11px 14px;font-size:12px;margin-bottom:18px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:18px}
+.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.stat{padding:17px 18px}.stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;font-weight:650}.stat-icon{width:31px;height:31px;border-radius:9px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;font-size:15px}
+.stat-value{font-size:26px;letter-spacing:-.7px;font-weight:780;margin:14px 0 5px}.stat-foot{font-size:11px;color:var(--muted)}.up{color:var(--green);font-weight:700}
+.main-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr);gap:17px;margin-bottom:18px}
+.panel{padding:19px;min-width:0}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.panel-title{font-size:14px;font-weight:800}.panel-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.status-pill{display:inline-flex;align-items:center;gap:6px;border-radius:20px;padding:5px 8px;font-size:10px;font-weight:800;white-space:nowrap}.ok{color:var(--green);background:var(--green-soft)}.warn{color:var(--amber);background:var(--amber-soft)}.bad{color:var(--red);background:var(--red-soft)}.neutral{color:#52617b;background:#edf0f5}
+.connection{display:grid;grid-template-columns:minmax(0,1fr) 45px minmax(0,1fr);align-items:center;gap:10px}
+.cloud-card{border:1px solid var(--line);border-radius:12px;padding:15px;min-width:0}
+.cloud-head{display:flex;align-items:center;gap:10px;margin-bottom:13px}.cloud-logo{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;font-size:18px;font-weight:900}.oci{background:#fff0eb;color:#c84b2f}.azure{background:#e9f4ff;color:#1672c7}
+.cloud-name{font-weight:800;font-size:13px}.cloud-type{font-size:10px;color:var(--muted);margin-top:3px}
+.detail{font-size:11px;color:var(--muted);margin-top:7px;overflow-wrap:anywhere}.detail b{color:var(--ink);font-weight:650}
+.arrow{height:40px;width:40px;border-radius:50%;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;font-size:20px;margin:auto}
+.progress-wrap{margin-top:17px}.progress-label{display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px}.progress-label span:last-child{color:var(--muted)}
+.progress{height:7px;border-radius:10px;background:#edf0f6;overflow:hidden}.progress>span{display:block;height:100%;width:74%;background:linear-gradient(90deg,#4169e1,#7b97ff);border-radius:10px}
+.chart-area{height:166px;position:relative;padding:12px 2px 20px}
+.chart-grid{position:absolute;inset:10px 0 25px;display:flex;flex-direction:column;justify-content:space-between}.chart-grid i{border-top:1px dashed #e7ebf2}
+.chart-svg{position:relative;width:100%;height:100%;overflow:visible}
+.chart-labels{display:flex;justify-content:space-between;color:#9aa3b5;font-size:10px;margin-top:3px}
+.legend{display:flex;gap:15px;font-size:10px;color:var(--muted)}.legend span{display:flex;align-items:center;gap:6px}.dot{width:7px;height:7px;border-radius:50%;background:var(--blue)}.dot.green{background:#2ab38b}
+.activity{display:grid;gap:0}.activity-row{display:grid;grid-template-columns:27px minmax(0,1fr) auto;gap:10px;padding:12px 0;border-bottom:1px solid #eff1f5;align-items:start}.activity-row:last-child{border-bottom:0}
+.activity-icon{width:26px;height:26px;border-radius:8px;background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-size:12px}.activity-icon.amber{background:var(--amber-soft);color:var(--amber)}.activity-icon.red{background:var(--red-soft);color:var(--red)}
+.activity-main{font-size:11px;font-weight:750;overflow-wrap:anywhere}.activity-sub{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}.time{font-size:10px;color:#8d97aa;white-space:nowrap}
+.table-panel{padding:0;overflow:hidden}.table-top{padding:18px 19px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.table-controls{display:flex;gap:8px;flex-wrap:wrap}.search{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11px;min-width:190px;outline:none}.filter{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:white;font-size:11px;color:var(--ink)}
+table{width:100%;border-collapse:collapse;text-align:left}th{font-size:10px;color:#7e899d;background:#f9fafc;font-weight:800;letter-spacing:.3px;padding:12px 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}td{font-size:11px;padding:14px 18px;border-bottom:1px solid #eef1f5;vertical-align:middle}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#fbfcff}.object{font-weight:750;overflow-wrap:anywhere}.subcell{font-size:10px;color:var(--muted);margin-top:4px}.type{display:inline-block;background:#f0f3f8;color:#57647a;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:800}
+.row-action{border:0;background:transparent;color:var(--blue);font-size:11px;font-weight:800}
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-top:18px}
+.check-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #eff1f5;font-size:11px}.check-row:last-child{border:0}.check-name{font-weight:750}.check-desc{font-size:10px;color:var(--muted);margin-top:4px}
+.switch{width:34px;height:19px;border-radius:20px;background:#cdd4e0;position:relative;flex-shrink:0}.switch:after{content:"";position:absolute;left:3px;top:3px;width:13px;height:13px;background:white;border-radius:50%;transition:.15s}.switch.on{background:var(--blue)}.switch.on:after{left:18px}
+.footer{display:flex;justify-content:space-between;gap:12px;color:#8993a5;font-size:10px;padding:20px 2px 0}
+.toast{position:fixed;bottom:22px;right:22px;background:#172033;color:white;padding:13px 16px;border-radius:10px;font-size:12px;box-shadow:0 8px 28px #0002;opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s;z-index:10}.toast.show{opacity:1;transform:translateY(0)}
+.mobile-menu{display:none}
+@media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.content{padding:24px 20px}.topbar{padding:0 20px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.main-grid{grid-template-columns:1fr}.bottom-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.app{grid-template-columns:1fr}.sidebar{display:none}.mobile-menu{display:inline-block}.topbar{height:62px;padding:0 14px}.content{padding:20px 13px}.page-head{flex-direction:column}.stats{gap:9px}.stat{padding:13px}.stat-value{font-size:22px}.connection{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.table-panel{overflow-x:auto}table{min-width:700px}.head-buttons{width:100%}.footer{flex-direction:column}.top-actions .hide-mobile{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">↔</div><div><strong>CloudSync Bridge</strong><small>Multi-cloud storage sync</small></div></div>
+    <div>
+      <div class="nav-label">WORKSPACE</div>
+      <nav class="nav" aria-label="Main navigation">
+        <button class="active" data-page="Overview"><span class="ico">▦</span> Overview</button>
+        <button data-page="Sync Jobs"><span class="ico">⇄</span> Sync Jobs</button>
+        <button data-page="Bucket Connections"><span class="ico">☁</span> Bucket Connections</button>
+        <button data-page="Object Explorer"><span class="ico">▤</span> Object Explorer</button>
+        <button data-page="Reconciliation"><span class="ico">⟳</span> Reconciliation</button>
+      </nav>
+    </div>
+    <div>
+      <div class="nav-label">OPERATIONS</div>
+      <nav class="nav">
+        <button data-page="Activity & Errors"><span class="ico">◷</span> Activity & Errors</button>
+        <button data-page="Usage & Costs"><span class="ico">▥</span> Usage & Costs</button>
+        <button data-page="Settings"><span class="ico">⚙</span> Settings</button>
+      </nav>
+    </div>
+    <div class="sidebar-bottom"><span class="pulse"></span><b>Demo environment</b><br>UI preview only. No cloud accounts connected.</div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px"><button class="icon-btn mobile-menu" id="menuBtn" aria-label="Menu">☰</button><div class="crumb">Workspace / <b id="crumbPage">Overview</b></div></div>
+      <div class="top-actions"><button class="icon-btn hide-mobile" id="refreshBtn">↻ Refresh</button><button class="icon-btn" id="helpBtn">? Help</button><div class="avatar">CS</div></div>
+    </header>
+
+    <div class="content">
+      <section class="page-head">
+        <div><h1 id="pageTitle">Storage sync overview</h1><div class="subtitle" id="pageSubtitle">Monitor replication health across your cloud storage providers.</div></div>
+        <div class="head-buttons"><button class="btn" id="reconcileBtn">⟳ Run reconciliation</button><button class="btn primary" id="newJobBtn">＋ New sync job</button></div>
+      </section>
+
+      <div class="demo-note"><span>ⓘ</span><span><b>Interactive UI prototype:</b> values are sample data. Buttons demonstrate the interface only; no OCI or Azure operations will run.</span></div>
+
+      <section class="stats">
+        <div class="stat"><div class="stat-top">Objects synchronized <span class="stat-icon">✓</span></div><div class="stat-value" id="syncedCount">13.74M</div><div class="stat-foot"><span class="up">↑ 58K</span> objects added in the last 24 hours</div></div>
+        <div class="stat"><div class="stat-top">Waiting in queue <span class="stat-icon">⇄</span></div><div class="stat-value" id="pendingCount">1,284</div><div class="stat-foot">Estimated processing time: <b>under 2 min</b></div></div>
+        <div class="stat"><div class="stat-top">Failed transfers <span class="stat-icon" style="background:var(--red-soft);color:var(--red)">!</span></div><div class="stat-value" id="failedCount">12</div><div class="stat-foot"><span style="color:var(--red);font-weight:700">4 need attention</span> · others scheduled to retry</div></div>
+        <div class="stat"><div class="stat-top">Data transferred today <span class="stat-icon" style="background:var(--green-soft);color:var(--green)">↗</span></div><div class="stat-value">23.6 GB</div><div class="stat-foot">Monthly growth estimate: <b>690 GB</b></div></div>
+      </section>
+
+      <section class="main-grid">
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Active replication job</div><div class="panel-sub">OCI Object Storage → Azure Blob Storage</div></div><span class="status-pill ok"><span class="pulse"></span> Syncing</span></div>
+          <div class="connection">
+            <div class="cloud-card"><div class="cloud-head"><div class="cloud-logo oci">O</div><div><div class="cloud-name">Oracle Cloud</div><div class="cloud-type">Object Storage · Source</div></div></div><div class="detail">Bucket <b>test-bucket</b></div><div class="detail">Region <b>me-central-1</b></div><div class="detail">Versioning <span class="status-pill ok">Enabled</span></div></div>
+            <div class="arrow">→</div>
+            <div class="cloud-card"><div class="cloud-head"><div class="cloud-logo azure">A</div><div><div class="cloud-name">Microsoft Azure</div><div class="cloud-type">Blob Storage · Destination</div></div></div><div class="detail">Container <b>test-container</b></div><div class="detail">Region <b>UAE North</b></div><div class="detail">Tier <b>Hot · LRS</b></div></div>
+          </div>
+          <div class="progress-wrap"><div class="progress-label"><b>Initial copy progress</b><span>74% · 5.48 TB of 7.41 TB</span></div><div class="progress"><span></span></div></div>
+          <div style="display:flex;gap:9px;margin-top:17px;flex-wrap:wrap"><button class="btn" id="pauseBtn">Ⅱ Pause job</button><button class="btn" id="detailsBtn">View job details →</button></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Transfer activity</div><div class="panel-sub">Objects processed over the last 24 hours</div></div><select class="filter" id="chartRange" aria-label="Chart range"><option>24 hours</option><option>7 days</option><option>30 days</option></select></div>
+          <div class="chart-area"><div class="chart-grid"><i></i><i></i><i></i><i></i></div><svg class="chart-svg" viewBox="0 0 420 130" preserveAspectRatio="none" aria-label="Sample transfer activity chart"><defs><linearGradient id="fillBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#4169e1" stop-opacity=".22"/><stop offset="1" stop-color="#4169e1" stop-opacity="0"/></linearGradient></defs><path id="blueArea" d="M0,95 C25,92 25,75 50,79 S80,100 105,67 S145,74 160,54 S200,65 220,40 S250,55 275,33 S310,56 330,28 S370,41 420,12 L420,130 L0,130Z" fill="url(#fillBlue)"/><path id="blueLine" d="M0,95 C25,92 25,75 50,79 S80,100 105,67 S145,74 160,54 S200,65 220,40 S250,55 275,33 S310,56 330,28 S370,41 420,12" fill="none" stroke="#4169e1" stroke-width="2.6" stroke-linecap="round"/><path d="M0,112 C30,105 30,115 55,102 S95,109 120,93 S150,101 180,84 S215,96 240,74 S270,90 300,68 S340,80 365,58 S395,66 420,51" fill="none" stroke="#2ab38b" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+          <div class="chart-labels"><span>00:00</span><span>04:00</span><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>Now</span></div>
+          <div class="legend" style="margin-top:14px"><span><i class="dot"></i> Objects processed</span><span><i class="dot green"></i> Objects received</span></div>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="table-top"><div><div class="panel-title">Recent sync activity</div><div class="panel-sub">Latest object operations across your sync jobs</div></div><div class="table-controls"><input class="search" id="searchInput" placeholder="Search object key…" aria-label="Search object key"><select class="filter" id="statusFilter" aria-label="Filter status"><option value="All">All statuses</option><option value="Synced">Synced</option><option value="Retrying">Retrying</option><option value="Failed">Failed</option><option value="Deleted">Deleted</option></select></div></div>
+        <table><thead><tr><th>OBJECT KEY</th><th>OPERATION</th><th>SIZE</th><th>LAST ACTIVITY</th><th>STATUS</th><th></th></tr></thead><tbody id="activityTable">
+          <tr data-status="Synced"><td><div class="object">documents/claims/CLM-10482.pdf</div><div class="subcell">test-bucket → test-container</div></td><td><span class="type">UPLOAD</span></td><td>4.8 MB</td><td>Just now</td><td><span class="status-pill ok">✓ Synced</span></td><td><button class="row-action" data-action="details">Details</button></td></tr>
+          <tr data-status="Retrying"><td><div class="object">reports/monthly/summary.xlsx</div><div class="subcell">test-bucket → test-container</div></td><td><span class="type">UPDATE</span></td><td>824 KB</td><td>34 sec ago</td><td><span class="status-pill warn">↻ Retrying</span></td><td><button class="row-action" data-action="retry">Retry</button></td></tr>
+          <tr data-status="Failed"><td><div class="object">archive/2026/scan-00918.tif</div><div class="subcell">test-bucket → test-container</div></td><td><span class="type">UPLOAD</span></td><td>118 MB</td><td>2 min ago</td><td><span class="status-pill bad">! Failed</span></td><td><button class="row-action" data-action="retry">Retry</button></td></tr>
+          <tr data-status="Deleted"><td><div class="object">temp/processing/job-7721.json</div><div class="subcell">test-bucket → test-container</div></td><td><span class="type">DELETE</span></td><td>—</td><td>5 min ago</td><td><span class="status-pill neutral">✓ Deleted</span></td><td><button class="row-action" data-action="details">Details</button></td></tr>
+          <tr data-status="Synced"><td><div class="object">uploads/policy/POL-28810.pdf</div><div class="subcell">test-bucket → test-container</div></td><td><span class="type">UPLOAD</span></td><td>2.1 MB</td><td>7 min ago</td><td><span class="status-pill ok">✓ Synced</span></td><td><button class="row-action" data-action="details">Details</button></td></tr>
+        </tbody></table>
+        <div id="emptyState" style="display:none;padding:24px;text-align:center;color:var(--muted);font-size:12px">No activity matches your search.</div>
+        <div style="padding:13px 19px;display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:10px"><span id="rowCount">Showing 5 sample events</span><button class="row-action" id="viewAllBtn">View all activity →</button></div>
+      </section>
+
+      <section class="bottom-grid">
+        <div class="panel"><div class="panel-head"><div><div class="panel-title">Reliability safeguards</div><div class="panel-sub">Protection against missed or duplicate events</div></div><span class="status-pill ok">Configured</span></div>
+          <div class="check-row"><div><div class="check-name">Durable job persistence</div><div class="check-desc">Store work before acknowledging an event</div></div><span class="status-pill ok">On</span></div>
+          <div class="check-row"><div><div class="check-name">Automatic retries</div><div class="check-desc">Retry transient errors with backoff</div></div><span class="status-pill ok">On</span></div>
+          <div class="check-row"><div><div class="check-name">Periodic reconciliation</div><div class="check-desc">Find missing or outdated destination objects</div></div><span class="status-pill ok">Every 6 hours</span></div>
+          <div class="check-row"><div><div class="check-name">Per-object ordering</div><div class="check-desc">Protect against stale updates and deletes</div></div><span class="status-pill warn">Demo only</span></div>
+        </div>
+        <div class="panel"><div class="panel-head"><div><div class="panel-title">Sync job settings</div><div class="panel-sub">Example controls for a future live application</div></div></div>
+          <div class="check-row"><div><div class="check-name">Real-time sync</div><div class="check-desc">Process object events as they arrive</div></div><button class="switch on" data-toggle aria-label="Toggle real-time sync"></button></div>
+          <div class="check-row"><div><div class="check-name">Mirror deletions</div><div class="check-desc">Delete current destination blob when source is absent</div></div><button class="switch on" data-toggle aria-label="Toggle mirror deletions"></button></div>
+          <div class="check-row"><div><div class="check-name">Copy historical versions</div><div class="check-desc">Your requirement is current live version only</div></div><button class="switch" data-toggle aria-label="Toggle historical versions"></button></div>
+          <div class="check-row"><div><div class="check-name">Bandwidth limit</div><div class="check-desc">Limit data transfer to control load and costs</div></div><button class="btn" id="bandwidthBtn">Set limit</button></div>
+        </div>
+      </section>
+      <div class="footer"><span>CloudSync Bridge · UI prototype v0.1</span><span>Demo data only · No cloud credentials stored</span></div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+const toastEl=document.getElementById('toast');let toastTimer;
+function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2800)}
+const titles={
+'Overview':['Storage sync overview','Monitor replication health across your cloud storage providers.'],
+'Sync Jobs':['Sync jobs','Create, pause, resume and review bulk or real-time sync jobs.'],
+'Bucket Connections':['Bucket connections','Manage cloud endpoints and test bucket-level access.'],
+'Object Explorer':['Object explorer','Search object keys and compare source and destination state.'],
+'Reconciliation':['Reconciliation','Find missing objects and queue safe repair operations.'],
+'Activity & Errors':['Activity and errors','Inspect event delivery, transfer attempts and retry history.'],
+'Usage & Costs':['Usage and costs','Track bytes transferred, request volume and estimated cloud charges.'],
+'Settings':['Settings','Configure retention, access control, notifications and sync behavior.']
+};
+document.querySelectorAll('.nav button').forEach(btn=>btn.addEventListener('click',()=>{
+ document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+ const p=btn.dataset.page;document.getElementById('crumbPage').textContent=p;document.getElementById('pageTitle').textContent=titles[p][0];document.getElementById('pageSubtitle').textContent=titles[p][1];
+ if(p!=='Overview')toast(p+' page preview selected — sample dashboard remains visible.');
+ if(innerWidth<720)document.querySelector('.sidebar').style.display='none';
+}));
+document.getElementById('menuBtn').addEventListener('click',()=>{const s=document.querySelector('.sidebar');s.style.display=s.style.display==='flex'?'none':'flex';s.style.position='absolute';s.style.zIndex='20';s.style.minHeight='100vh';s.style.width='246px'});
+document.getElementById('refreshBtn').addEventListener('click',()=>toast('Demo refreshed. Live cloud data is not connected.'));
+document.getElementById('helpBtn').addEventListener('click',()=>toast('Connect OCI and Azure credentials in the live app to get started.'));
+document.getElementById('newJobBtn').addEventListener('click',()=>toast('New sync job: choose OCI source, Azure destination, and sync mode.'));
+document.getElementById('reconcileBtn').addEventListener('click',()=>toast('Demo: reconciliation would compare inventories and queue missing objects.'));
+document.getElementById('detailsBtn').addEventListener('click',()=>toast('Job details: source version, destination ETag, throughput, retries and logs.'));
+document.getElementById('pauseBtn').addEventListener('click',e=>{const paused=e.currentTarget.textContent.includes('Pause');e.currentTarget.textContent=paused?'▶ Resume job':'Ⅱ Pause job';toast(paused?'Demo job paused. No real transfer was changed.':'Demo job resumed. No real transfer was changed.')});
+document.getElementById('bandwidthBtn').addEventListener('click',()=>{const v=prompt('Demo bandwidth limit (MB/s):','25');if(v!==null&&v.trim())toast('Demo bandwidth limit set to '+v+' MB/s. Not applied to a real worker.')});
+document.querySelectorAll('[data-toggle]').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('on');toast('Demo setting toggled. Live configuration is not connected.')}));
+function filterRows(){const q=document.getElementById('searchInput').value.toLowerCase(),st=document.getElementById('statusFilter').value;let count=0;document.querySelectorAll('#activityTable tr').forEach(r=>{const okText=r.textContent.toLowerCase().includes(q),okStatus=st==='All'||r.dataset.status===st;r.style.display=okText&&okStatus?'':'none';if(okText&&okStatus)count++});document.getElementById('emptyState').style.display=count?'none':'block';document.getElementById('rowCount').textContent='Showing '+count+' sample event'+(count===1?'':'s')}
+document.getElementById('searchInput').addEventListener('input',filterRows);document.getElementById('statusFilter').addEventListener('change',filterRows);
+document.getElementById('activityTable').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;const row=b.closest('tr');if(b.dataset.action==='retry'){row.dataset.status='Retrying';row.querySelector('.status-pill').className='status-pill warn';row.querySelector('.status-pill').textContent='↻ Retrying';b.textContent='Retry';filterRows();toast('Demo retry queued. No cloud request was sent.')}else toast('Sample object details: event ID, source version, destination ETag and transfer log.')});
+document.getElementById('viewAllBtn').addEventListener('click',()=>toast('Activity page preview selected.'));
+document.getElementById('chartRange').addEventListener('change',e=>toast('Chart range changed to '+e.target.value+' (sample chart only).'));
+</script>
+</body>
+</html>
